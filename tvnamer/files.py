@@ -6,10 +6,10 @@ import logging
 import datetime
 from typing import List, Pattern, Optional
 
-from .config import Config
-from .utils import _apply_replacements, warn, split_extension
-from .data import BaseInfo, EpisodeInfo, DatedEpisodeInfo, AnimeEpisodeInfo, NoSeasonEpisodeInfo
-from .tvnamer_exceptions import ConfigValueError, InvalidFilename, InvalidPath
+from tvnamer.config import Config
+from tvnamer.utils import _apply_replacements, warn, split_extension
+from tvnamer.data import BaseInfo, EpisodeInfo, DatedEpisodeInfo, AnimeEpisodeInfo, NoSeasonEpisodeInfo
+from tvnamer.tvnamer_exceptions import ConfigValueError, InvalidFilename, InvalidPath
 
 
 LOG = logging.getLogger(__name__)

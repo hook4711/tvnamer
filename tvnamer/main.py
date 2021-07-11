@@ -4,7 +4,10 @@
 """
 
 import os
+
 import sys
+sys.path.append('../tvnamer')
+
 import logging
 import warnings
 
@@ -21,8 +24,8 @@ from typing import List, Union, Optional
 from tvnamer import cliarg_parser, __version__
 from tvnamer.config_defaults import defaults
 from tvnamer.config import Config
-from .files import FileFinder, FileParser, Renamer, _apply_replacements_input
-from .utils import (
+from tvnamer.files import FileFinder, FileParser, Renamer, _apply_replacements_input
+from tvnamer.utils import (
     warn,
     format_episode_numbers,
     make_valid_filename,
@@ -141,8 +144,17 @@ def do_move_file(cnamer, dest_dir=None, dest_filepath=None, get_path_preview=Fal
             "Config value for move_files_destination cannot be None if move_files_enabled is True"
         )
 
+    # DI: Zielverzeichnis muss existieren
     try:
-        return cnamer.new_path(
+        if not os.path.exists(dest_filepath):
+            os.makedirs(dest_filepath, exist_ok=True)
+            print("Created directory %s" % dest_filepath)
+    except OSError as e:
+        warn("Skipping file due to error (Could not create path): %s" % e)
+        return None
+
+    try:
+        result = cnamer.new_path(
             new_path=dest_dir,
             new_fullpath=dest_filepath,
             always_move=Config["always_move"],
@@ -150,6 +162,8 @@ def do_move_file(cnamer, dest_dir=None, dest_filepath=None, get_path_preview=Fal
             get_path_preview=get_path_preview,
             force=Config["overwrite_destination_on_move"],
         )
+
+        return result
 
     except OSError as e:
         if Config["skip_behaviour"] == "exit":
@@ -188,6 +202,28 @@ def confirm(question, options, default="y"):
         elif ans == "":
             return default
 
+
+def do_delete_path(episode, ispreview=False):
+
+    count = len(os.listdir(episode.filepath))
+
+    try:
+        if os.path.exists(episode.filepath) and not(os.path.isfile(episode.fullpath)):
+            print("Deleting %s" % episode.filepath)
+            if not ispreview:
+                os.removedirs(episode.filepath)
+            return True
+        elif count == 1 and ispreview:
+            print("Path will be deleted: %s" % episode.filepath)
+            return True
+        elif os.path.isfile(episode.fullpath):
+            warn("File %s already exists!" % episode.filepath)
+            return False
+        else:
+            return True
+    except OSError as e:
+        warn("Path %s could not be deleted!" % episode.filepath)
+        return False
 
 def process_file(tvdb_instance, episode):
     # type: (tvdb_api.Tvdb, BaseInfo) -> None
@@ -271,14 +307,15 @@ def process_file(tvdb_instance, episode):
                         "%s will be moved to %s"
                         % (new_name, get_move_destination(episode))
                     )
+
+                    do_delete_path(episode, True)
                 return
             elif Config["always_rename"]:
                 do_rename_file(cnamer, new_name)
                 if Config["move_files_enable"]:
                     if Config["move_files_destination_is_filepath"]:
-                        do_move_file(
-                            cnamer=cnamer, dest_filepath=get_move_destination(episode)
-                        )
+                        do_move_file(cnamer=cnamer, dest_filepath=get_move_destination(episode))
+                        do_delete_path(episode)
                     else:
                         do_move_file(cnamer=cnamer, dest_dir=get_move_destination(episode))
                 return
