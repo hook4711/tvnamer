@@ -4,6 +4,7 @@
 """
 
 import os
+import pathlib
 
 import sys
 sys.path.append('../tvnamer')
@@ -104,6 +105,22 @@ def get_move_destination(episode):
             ),
             "originalfilename": episode.originalfilename,
         }
+
+        dest_dir_alt = Config["move_files_destination_alt"] % {
+            "seriesname": wrap_validfname(episode.seriesname),
+            "seasonnumber": episode.seasonnumber,
+            "episodenumbers": wrap_validfname(
+                format_episode_numbers(episode.episodenumbers)
+            ),
+            "originalfilename": episode.originalfilename,
+        }
+
+        if os.path.exists(dest_dir):
+            print("Destination directory exists: " + dest_dir)
+        elif os.path.exists(dest_dir_alt):
+            print(f"Destination directory does not exist: {dest_dir}")
+            print(f"Alternative directory exists and will be used: {dest_dir_alt}")
+            dest_dir = dest_dir_alt
     else:
         raise RuntimeError("Unhandled episode subtype of %s" % type(episode))
 

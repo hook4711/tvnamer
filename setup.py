@@ -15,7 +15,7 @@ setup(
 name = 'tvnamer',
 version=__version__,
 
-author='dbr/Ben',
+author='di',
 description='Automatic TV episode namer',
 url='http://github.com/dbr/tvnamer',
 license='unlicense',
