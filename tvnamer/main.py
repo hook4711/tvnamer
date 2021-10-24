@@ -4,7 +4,6 @@
 """
 
 import os
-import pathlib
 
 import sys
 sys.path.append('../tvnamer')
@@ -20,7 +19,7 @@ except ImportError:
 import json
 
 import tvdb_api
-from typing import List, Union, Optional
+from typing import List, Optional
 
 from tvnamer import cliarg_parser, __version__
 from tvnamer.config_defaults import defaults
@@ -207,7 +206,7 @@ def confirm(question, options, default="y"):
 
     while True:
         print(question)
-        print("(%s) " % (options_str), end="")
+        print("(%s) " % options_str, end="")
         try:
             ans = input().strip()
         except KeyboardInterrupt as errormsg:
@@ -240,6 +239,7 @@ def do_delete_path(episode, ispreview=False):
             return True
     except OSError as e:
         warn("Path %s could not be deleted!" % episode.filepath)
+        warn("Fehler: %s" % e)
         return False
 
 def process_file(tvdb_instance, episode):
@@ -251,7 +251,7 @@ def process_file(tvdb_instance, episode):
 
     if len(Config["input_filename_replacements"]) > 0:
         replaced = _apply_replacements_input(episode.fullfilename)
-        print("# With custom replacements: %s" % (replaced))
+        print("# With custom replacements: %s" % replaced)
 
     # Use force_name option. Done after input_filename_replacements so
     # it can be used to skip the replacements easily
@@ -274,7 +274,7 @@ def process_file(tvdb_instance, episode):
             warn("Skipping file due to error: %s" % errormsg)
             return
         else:
-            warn("%s" % (errormsg))
+            warn("%s" % errormsg)
     except (SeasonNotFound, EpisodeNotFound, EpisodeNameNotFound) as errormsg:
         # Show was found, so use corrected series name
         if Config["always_rename"] and Config["skip_file_on_error"]:
@@ -284,7 +284,7 @@ def process_file(tvdb_instance, episode):
             warn("Skipping file due to error: %s" % errormsg)
             return
 
-        warn("%s" % (errormsg))
+        warn("%s" % errormsg)
 
     cnamer = Renamer(episode.fullpath)
 
@@ -526,7 +526,7 @@ def main():
         config_to_load = None
 
     if config_to_load is not None:
-        LOG.info("Loading config: %s" % (config_to_load))
+        LOG.info("Loading config: %s" % config_to_load)
         if os.path.isfile(old_default_configuration):
             LOG.warning("WARNING: you have a config at deprecated ~/.tvnamer.json location.")
             LOG.warning("Config must be moved to new location: ~/.config/tvnamer/tvnamer.json")
@@ -544,7 +544,7 @@ def main():
 
     # Save config argument
     if opts.saveconfig is not None:
-        LOG.info("Saving config: %s" % (opts.saveconfig))
+        LOG.info("Saving config: %s" % opts.saveconfig)
         config_to_save = dict(opts.__dict__)
         del config_to_save["saveconfig"]
         del config_to_save["loadconfig"]
