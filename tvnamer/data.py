@@ -145,7 +145,9 @@ class BaseInfo(metaclass=ABCMeta):
         ):
         # type: (...) -> None
 
+        self.filesize = self.sizeof_fmt(os.path.getsize(filename))
         self.fullpath = filename
+
         if filename is not None:
             # Remains untouched, for use when renaming file
             self.originalfilename = os.path.basename(filename) # type: Optional[str]
@@ -157,6 +159,13 @@ class BaseInfo(metaclass=ABCMeta):
         if extra is None:
             extra = {}
         self.extra = extra
+
+    def sizeof_fmt(self, num):
+        for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"]:
+            if abs(num) < 1024.0:
+                return f"{num:3.1f}{unit}"
+            num /= 1024.0
+        return f"{num:.1f}Yi"
 
     def fullpath_get(self):
         # type: () -> Optional[str]
@@ -337,6 +346,9 @@ class BaseInfo(metaclass=ABCMeta):
             custom_blacklist=Config['custom_filename_character_blacklist'],
             replace_with=Config['replace_invalid_characters_with'],
         )
+
+    def set_filesize(self, value):
+        self.filesize = value
 
 
 class EpisodeInfo(BaseInfo):

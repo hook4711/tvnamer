@@ -19,3 +19,7 @@
         ls Scrubs*
         deactivate
         rmvirtualenv tvnamertest
+
+##===============<span style="color: magenta">DI</span>================
+## Einfach `pip install .` in diesem Verzeichnis aufrufen!
+##=================================

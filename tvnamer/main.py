@@ -50,6 +50,14 @@ from tvnamer.tvnamer_exceptions import (
     DataRetrievalError,
 )
 
+from rich import print
+from rich.table import Table
+from rich import box
+from rich.panel import Panel
+from rich.layout import Layout
+from rich.live import Live
+from rich.progress import TimeElapsedColumn
+from rich.progress import Progress, BarColumn, TextColumn
 
 LOG = logging.getLogger(__name__)
 
@@ -57,6 +65,8 @@ LOG = logging.getLogger(__name__)
 # Key for use in tvnamer only - other keys can easily be registered at https://thetvdb.com/api-information
 TVNAMER_API_KEY = "fb51f9b848ffac9750bada89ecba0225"
 
+MSG_COLOR = "white"
+MSG_COLOR_PATH = "cyan"
 
 def get_move_destination(episode):
     # type: (BaseInfo) -> str
@@ -114,12 +124,18 @@ def get_move_destination(episode):
             "originalfilename": episode.originalfilename,
         }
 
-        if os.path.exists(dest_dir):
-            print("Destination directory exists: " + dest_dir)
-        elif os.path.exists(dest_dir_alt):
-            print(f"Destination directory does not exist: {dest_dir}")
-            print(f"Alternative directory exists and will be used: {dest_dir_alt}")
+        if os.path.exists(dest_dir_alt):
+            # msg_table.add_row(f"[{MSG_COLOR}]Destination directory does not exist:[/][{MSG_COLOR_PATH}]{dest_dir}[/]")
+            # msg_table.add_row(f"[{MSG_COLOR}]Alternative directory exists and will be used:[/][{MSG_COLOR_PATH}]{dest_dir_alt}[/]")
             dest_dir = dest_dir_alt
+
+        #if os.path.exists(dest_dir):
+            #msg_table.add_row(f"[{MSG_COLOR}]Destination directory exists:[/][{MSG_COLOR_PATH}]{dest_dir}[/]")
+            #print("Destination directory exists: " + dest_dir)
+        #elif os.path.exists(dest_dir_alt):
+            #msg_table.add_row(f"[{MSG_COLOR}]Destination directory does not exist:[/][{MSG_COLOR_PATH}]{dest_dir}[/]")
+            #msg_table.add_row(f"[{MSG_COLOR}]Alternative directory exists and will be used:[/][{MSG_COLOR_PATH}]{dest_dir_alt}[/]")
+            #dest_dir = dest_dir_alt
     else:
         raise RuntimeError("Unhandled episode subtype of %s" % type(episode))
 
@@ -219,7 +235,7 @@ def confirm(question, options, default="y"):
             return default
 
 
-def do_delete_path(episode, ispreview=False):
+def do_delete_path(episode, ispreview=False, msg_table=None):
 
     count = len(os.listdir(episode.filepath))
 
@@ -230,7 +246,8 @@ def do_delete_path(episode, ispreview=False):
                 os.removedirs(episode.filepath)
             return True
         elif count == 1 and ispreview:
-            print("Path will be deleted: %s" % episode.filepath)
+            #print("Path will be deleted: %s" % episode.filepath)
+
             return True
         elif os.path.isfile(episode.fullpath):
             warn("File %s already exists!" % episode.filepath)
@@ -242,12 +259,10 @@ def do_delete_path(episode, ispreview=False):
         warn("Fehler: %s" % e)
         return False
 
-def process_file(tvdb_instance, episode):
-    # type: (tvdb_api.Tvdb, BaseInfo) -> None
+def process_file(tvdb_instance, episode, table):
+    # type: (tvdb_api.Tvdb, BaseInfo, Table) -> None
     """Gets episode name, prompts user for input
     """
-    print("#" * 20)
-    print("# Processing file: %s" % episode.fullfilename)
 
     if len(Config["input_filename_replacements"]) > 0:
         replaced = _apply_replacements_input(episode.fullfilename)
@@ -258,7 +273,7 @@ def process_file(tvdb_instance, episode):
     if Config["force_name"] is not None:
         episode.seriesname = Config["force_name"]
 
-    print("# Detected series: %s (%s)" % (episode.seriesname, episode.number_string()))
+    # print("# Detected series: %s (%s)" % (episode.seriesname, episode.number_string()))
 
     try:
         episode.populate_from_tvdb(
@@ -298,15 +313,15 @@ def process_file(tvdb_instance, episode):
     else:
         new_name = episode.generate_filename()
         if new_name == episode.fullfilename:
-            print("#" * 20)
-            print("Existing filename is correct: %s" % episode.fullfilename)
-            print("#" * 20)
-
+            #print("#" * 20)
+            #print("Existing filename is correct: %s" % episode.fullfilename)
+            #print("#" * 20)
+            table.add_row(episode.fullfilename, new_name, get_move_destination(episode), episode.filesize)
             should_rename = True
 
         else:
-            print("#" * 20)
-            print("Old filename: %s" % episode.fullfilename)
+            #print("#" * 20)
+            #print("Old filename: %s" % episode.fullfilename)
 
             if len(Config["output_filename_replacements"]) > 0:
                 # Show filename without replacements
@@ -315,15 +330,16 @@ def process_file(tvdb_instance, episode):
                     % (episode.generate_filename(preview_orig_filename=True))
                 )
 
-            print("New filename: %s" % new_name)
+            #print(f"{episode.fullfilename} => {new_name}")
+            table.add_row(episode.fullfilename, new_name, get_move_destination(episode), episode.filesize)
 
             if Config["dry_run"]:
-                print("%s will be renamed to %s" % (episode.fullfilename, new_name))
+                # print("%s will be renamed to %s" % (episode.fullfilename, new_name))
                 if Config["move_files_enable"]:
-                    print(
-                        "%s will be moved to %s"
-                        % (new_name, get_move_destination(episode))
-                    )
+                    #print(
+                    #    "%s will be moved to %s"
+                    #    % (new_name, get_move_destination(episode))
+                    #)
 
                     do_delete_path(episode, True)
                 return
@@ -360,7 +376,7 @@ def process_file(tvdb_instance, episode):
     if should_rename and Config["move_files_enable"]:
         new_path = get_move_destination(episode)
         if Config["dry_run"]:
-            print("%s will be moved to %s" % (new_name, get_move_destination(episode)))
+            #print("%s will be moved to %s" % (new_name, get_move_destination(episode)))
             return
 
         if Config["move_files_destination_is_filepath"]:
@@ -383,7 +399,7 @@ def process_file(tvdb_instance, episode):
 
 def find_files(paths):
     # type: (List[str]) -> List[str]
-    """Takes an array of paths, returns all files found
+    """Takes an array of paths and a Table for Messages, returns all files found
     """
     valid_files = []
 
@@ -414,8 +430,44 @@ def tvnamer(paths):
     """Main tvnamer function, takes an array of paths, does stuff.
     """
 
-    print("#" * 20)
-    print("# Starting tvnamer")
+    layout = Layout()
+
+    header = Layout(name="header", size=6)
+    body   = Layout(name="body", minimum_size=20)
+    footer = Layout(name="footer", size=3)
+
+    layout.split(
+        header,
+        body,
+        footer
+    )
+
+    grid = Table.grid(expand=True)
+    grid.add_column(justify="center", ratio=1)
+    grid.add_row(
+        "[b]TVNamer[/b] modified by R.Dion (c)2021", style="white"
+    )
+    header_title = Layout(name="header_title", size=3)
+    header_title.update(Panel(grid, style="magenta", box=box.SIMPLE))
+
+    header_info = Layout(name="header_info", size=3)
+
+    info_grid = Table.grid(expand=True)
+    info_grid.add_column(justify="left", ratio=3)
+    info_grid.add_column(justify="right")
+
+    header_info.update(Panel(info_grid, style="cyan", box=box.ROUNDED))
+
+    header.split(
+        header_title,
+        header_info
+    )
+
+    table = Table(expand=True, box=box.ROUNDED, border_style="bright_black")
+    table.add_column("Original", style="bright_yellow", header_style="white bold")
+    table.add_column("Neu",      style="green",  header_style="white bold")
+    table.add_column("Ziel",     style="cyan",   header_style="white bold")
+    table.add_column("Grösse",   style="white",  header_style="white bold", justify="right", width=8)
 
     episodes_found = []
 
@@ -442,9 +494,8 @@ def tvnamer(paths):
     if len(episodes_found) == 0:
         raise NoValidFilesFoundError()
 
-    print(
-        "# Found %d episode" % len(episodes_found) + ("s" * (len(episodes_found) > 1))
-    )
+    info_grid.add_row("[white]Searching:[/] [cyan]" + ", ".join(paths)  + "[/]",
+                      "[white]Found:[/] [cyan]%d[/] [white]episode" % len(episodes_found) + ("s" * (len(episodes_found) > 1)) + "[/]")
 
     # Sort episodes by series name, season and episode number
     episodes_found.sort(key=lambda x: x.sortable_info())
@@ -477,12 +528,16 @@ def tvnamer(paths):
         apikey=api_key,
     )
 
-    for episode in episodes_found:
-        process_file(tvdb_instance, episode)
-        print("")
+    text_column = TextColumn(" [white]Fortschritt:[/]")
+    bar_column = BarColumn(bar_width=None, style="white", complete_style="bright_green", finished_style="green")
+    progress = Progress(text_column, bar_column, "[green]{task.percentage:>3.0f}%[/]", TimeElapsedColumn(), expand=True)
+    footer.update(Panel(progress, box=box.ROUNDED, style="cyan"))
 
-    print("#" * 20)
-    print("# Done")
+    body.update(Panel(table, box= box.ROUNDED, style="cyan"))
+
+    with Live(layout, auto_refresh=True):
+        for episode in progress.track(episodes_found):
+            process_file(tvdb_instance, episode, table)
 
 
 def main():
