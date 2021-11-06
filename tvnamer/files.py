@@ -401,7 +401,7 @@ class FileParser(object):
 
 def rename_file(old, new):
     # type: (str, str) -> None
-    print("rename %s to %s" % (old, new))
+    # print("rename %s to %s" % (old, new))
     stat = os.stat(old)
     shutil.move(old, new)
     try:
@@ -418,7 +418,7 @@ def rename_file(old, new):
 
 def copy_file(old, new):
     # type: (str, str) -> None
-    print("copy %s to %s" % (old, new))
+    # print("copy %s to %s" % (old, new))
     shutil.copyfile(old, new)
     shutil.copystat(old, new)
 
@@ -485,7 +485,7 @@ class Renamer(object):
             new_fullpath = _apply_replacements_fullpath(new_fullpath)
             new_dir = os.path.dirname(new_fullpath)
 
-        print("New path: %s" % new_fullpath)
+        # print("New path: %s" % new_fullpath)
 
         if get_path_preview:
             return new_fullpath

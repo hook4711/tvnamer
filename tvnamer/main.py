@@ -241,7 +241,7 @@ def do_delete_path(episode, ispreview=False, msg_table=None):
 
     try:
         if os.path.exists(episode.filepath) and not(os.path.isfile(episode.fullpath)):
-            print("Deleting %s" % episode.filepath)
+            # print("Deleting %s" % episode.filepath)
             if not ispreview:
                 os.removedirs(episode.filepath)
             return True
