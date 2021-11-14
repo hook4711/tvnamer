@@ -22,7 +22,7 @@ from tvnamer.utils import (
     format_episode_numbers,
     make_valid_filename,
     split_extension,
-    _apply_replacements, # FIXME
+    _apply_replacements, sizeof_fmt,  # FIXME
 )
 
 
@@ -145,7 +145,8 @@ class BaseInfo(metaclass=ABCMeta):
         ):
         # type: (...) -> None
 
-        self.filesize = self.sizeof_fmt(os.path.getsize(filename))
+        self.filesize_in_bytes = os.path.getsize(filename)
+        self.filesize = sizeof_fmt(self.filesize_in_bytes)
         self.fullpath = filename
 
         if filename is not None:
@@ -159,13 +160,6 @@ class BaseInfo(metaclass=ABCMeta):
         if extra is None:
             extra = {}
         self.extra = extra
-
-    def sizeof_fmt(self, num):
-        for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"]:
-            if abs(num) < 1024.0:
-                return f"{num:3.1f}{unit}"
-            num /= 1024.0
-        return f"{num:.1f}Yi"
 
     def fullpath_get(self):
         # type: () -> Optional[str]
@@ -349,6 +343,9 @@ class BaseInfo(metaclass=ABCMeta):
 
     def set_filesize(self, value):
         self.filesize = value
+
+    def set_filesize_in_bytes(self, value):
+        self.filesize_in_bytes = value
 
 
 class EpisodeInfo(BaseInfo):

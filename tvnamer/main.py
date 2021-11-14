@@ -6,6 +6,8 @@
 import os
 
 import sys
+from time import sleep, time
+
 sys.path.append('../tvnamer')
 
 import logging
@@ -28,7 +30,7 @@ from tvnamer.files import FileFinder, FileParser, Renamer, _apply_replacements_i
 from tvnamer.utils import (
     warn,
     format_episode_numbers,
-    make_valid_filename,
+    make_valid_filename, sizeof_fmt,
 )
 from tvnamer.data import (
     BaseInfo,
@@ -58,6 +60,9 @@ from rich.layout import Layout
 from rich.live import Live
 from rich.progress import TimeElapsedColumn
 from rich.progress import Progress, BarColumn, TextColumn
+from rich.text import Text
+
+import keyboard
 
 LOG = logging.getLogger(__name__)
 
@@ -67,6 +72,16 @@ TVNAMER_API_KEY = "fb51f9b848ffac9750bada89ecba0225"
 
 MSG_COLOR = "white"
 MSG_COLOR_PATH = "cyan"
+
+
+def truncate_string(str_input, max_length):
+    str_end = '...'
+    length = len(str_input)
+    if length > max_length:
+        return str_input[:max_length - len(str_end)] + str_end
+
+    return str_input
+
 
 def get_move_destination(episode):
     # type: (BaseInfo) -> str
@@ -180,7 +195,7 @@ def do_move_file(cnamer, dest_dir=None, dest_filepath=None, get_path_preview=Fal
     try:
         if not os.path.exists(dest_filepath):
             os.makedirs(dest_filepath, exist_ok=True)
-            print("Created directory %s" % dest_filepath)
+            # print("Created directory %s" % dest_filepath)
     except OSError as e:
         warn("Skipping file due to error (Could not create path): %s" % e)
         return None
@@ -250,13 +265,13 @@ def do_delete_path(episode, ispreview=False, msg_table=None):
 
             return True
         elif os.path.isfile(episode.fullpath):
-            warn("File %s already exists!" % episode.filepath)
+            #warn("File %s already exists!" % episode.filepath)
             return False
         else:
             return True
     except OSError as e:
-        warn("Path %s could not be deleted!" % episode.filepath)
-        warn("Fehler: %s" % e)
+        #warn("Path %s could not be deleted!" % episode.filepath)
+        #warn("Fehler: %s" % e)
         return False
 
 def process_file(tvdb_instance, episode, table):
@@ -316,7 +331,8 @@ def process_file(tvdb_instance, episode, table):
             #print("#" * 20)
             #print("Existing filename is correct: %s" % episode.fullfilename)
             #print("#" * 20)
-            table.add_row(episode.fullfilename, new_name, get_move_destination(episode), episode.filesize)
+            table.add_row(episode.fullfilename, truncate_string(new_name, 40),
+                          truncate_string(get_move_destination(episode), 55), episode.filesize)
             should_rename = True
 
         else:
@@ -331,7 +347,8 @@ def process_file(tvdb_instance, episode, table):
                 )
 
             #print(f"{episode.fullfilename} => {new_name}")
-            table.add_row(episode.fullfilename, new_name, get_move_destination(episode), episode.filesize)
+            table.add_row(episode.fullfilename, truncate_string(new_name, 40),
+                          truncate_string(get_move_destination(episode), 55), episode.filesize)
 
             if Config["dry_run"]:
                 # print("%s will be renamed to %s" % (episode.fullfilename, new_name))
@@ -399,7 +416,8 @@ def process_file(tvdb_instance, episode, table):
 
 def find_files(paths):
     # type: (List[str]) -> List[str]
-    """Takes an array of paths and a Table for Messages, returns all files found
+    """
+    Takes an array of paths and a Table for Messages, returns all files found
     """
     valid_files = []
 
@@ -425,51 +443,34 @@ def find_files(paths):
     return valid_files
 
 
+def create_info_grid(paths, count_files, header_info):
+    # type: (List[str], int, Layout) -> None
+    """
+    Kopfzeile mit Pfad(en) und Anzahl gefundener Episoden erzeugen und anzeigen
+    """
+    info_grid = Table.grid(expand=True)
+    info_grid.add_column(justify="left", ratio=3)
+    info_grid.add_column(justify="right")
+
+    info_grid.add_row("[white]Searching:[/] [cyan]" + ", ".join(paths) + "[/]",
+                      "[white]Found:[/] [cyan]%d[/] [white]episode" % count_files + ("s" * (count_files > 1)) + "[/]")
+
+    header_info.update(Panel(info_grid, style="cyan", box=box.ROUNDED))
+
+
 def tvnamer(paths):
     # type: (List[str]) -> None
     """Main tvnamer function, takes an array of paths, does stuff.
     """
 
-    layout = Layout()
+    # Layout erzeugen
+    layout = create_layout()
 
-    header = Layout(name="header", size=6)
-    body   = Layout(name="body", minimum_size=20)
-    footer = Layout(name="footer", size=3)
-
-    layout.split(
-        header,
-        body,
-        footer
-    )
-
-    grid = Table.grid(expand=True)
-    grid.add_column(justify="center", ratio=1)
-    grid.add_row(
-        "[b]TVNamer[/b] modified by R.Dion (c)2021", style="white"
-    )
-    header_title = Layout(name="header_title", size=3)
-    header_title.update(Panel(grid, style="magenta", box=box.SIMPLE))
-
-    header_info = Layout(name="header_info", size=3)
-
-    info_grid = Table.grid(expand=True)
-    info_grid.add_column(justify="left", ratio=3)
-    info_grid.add_column(justify="right")
-
-    header_info.update(Panel(info_grid, style="cyan", box=box.ROUNDED))
-
-    header.split(
-        header_title,
-        header_info
-    )
-
-    table = Table(expand=True, box=box.ROUNDED, border_style="bright_black")
-    table.add_column("Original", style="bright_yellow", header_style="white bold")
-    table.add_column("Neu",      style="green",  header_style="white bold")
-    table.add_column("Ziel",     style="cyan",   header_style="white bold")
-    table.add_column("Grösse",   style="white",  header_style="white bold", justify="right", width=8)
+    # Tabelle fuer die einzelnen Episoden
+    table = create_table()
 
     episodes_found = []
+    size = 0
 
     for cfile in find_files(paths):
         parser = FileParser(cfile)
@@ -490,12 +491,13 @@ def tvnamer(paths):
 
             else:
                 episodes_found.append(episode)
+                size += episode.filesize_in_bytes
 
     if len(episodes_found) == 0:
         raise NoValidFilesFoundError()
 
-    info_grid.add_row("[white]Searching:[/] [cyan]" + ", ".join(paths)  + "[/]",
-                      "[white]Found:[/] [cyan]%d[/] [white]episode" % len(episodes_found) + ("s" * (len(episodes_found) > 1)) + "[/]")
+    # Informationen im Header anzeigen
+    create_info_grid(paths, len(episodes_found), layout.get("header").get("header_info"))
 
     # Sort episodes by series name, season and episode number
     episodes_found.sort(key=lambda x: x.sortable_info())
@@ -528,16 +530,182 @@ def tvnamer(paths):
         apikey=api_key,
     )
 
+    # Progressbar im Footer erzeugen
+    text_column = TextColumn(" [white]Fortschritt:[/]")
+    bar_column  = BarColumn(bar_width=None, style="white", complete_style="bright_green", finished_style="green")
+    progress    = Progress(text_column, bar_column, "[green]{task.percentage:>3.0f}%[/]", TimeElapsedColumn(), expand=True)
+
+    # Meldung erzeugen
+    msg_text = Text("scanning...", justify="center", style="white")
+
+    # Progress und Meldung anzeigen
+    layout.get("footer").get("footer_left").update(Panel(progress, box=box.ROUNDED, style="cyan"))
+    layout.get("footer").get("footer_right").update(Panel(msg_text, box=box.ROUNDED, style="cyan"))
+
+    # Table anzeigen
+    layout.get("body").update(Panel(table, box= box.ROUNDED, style="cyan"))
+
+    with Live(layout, auto_refresh=True, refresh_per_second=2):
+        # Informationen zu den Episoden ermitteln
+        for episode in progress.track(episodes_found):
+            process_file(tvdb_instance, episode, table)
+
+        # Summenzeile ausgeben
+        table.add_row(None, None, None, None, end_section=True)
+        table.add_row(None, None, Text("Summe:", justify="right", style="bright_yellow"), sizeof_fmt(size))
+
+        # Meldung ausgeben
+        msg_text = Text("[m]= move, [r]= rename only, [q]= quit", justify="center", style="bright_yellow")
+        layout.get("footer").get("footer_right").update(Panel(msg_text, box=box.ROUNDED, style="cyan"))
+
+    # Warten auf Tastendruck
+    wait(layout, episodes_found)
+
+
+def create_layout():
+    # type: () -> Layout
+    """
+    Erzeugt das Layout fuer die Bildschirmausgaben.
+    """
+    layout = Layout()
+
+    header = Layout(name="header", size=6)
+    body   = Layout(name="body", minimum_size=20)
+    footer = Layout(name="footer", size=3)
+
+    layout.split(
+        header,
+        body,
+        footer
+    )
+
+    grid = Table.grid(expand=True)
+    grid.add_column(justify="center", ratio=1)
+    grid.add_row(
+        "[b]TVNamer[/b] modified by R.Dion (c)2021", style="white"
+    )
+
+    header_title = Layout(name="header_title", size=3)
+    header_title.update(Panel(grid, box=box.SIMPLE))
+
+    header_info = Layout(name="header_info", size=3)
+
+    header.split(
+        header_title,
+        header_info
+    )
+
+    footer_left = Layout(name="footer_left", ratio=2)
+    footer_right = Layout(name="footer_right")
+
+    layout.get("footer").split_row(
+        footer_left,
+        footer_right
+    )
+
+    return layout
+
+
+def create_table(show_time=False):
+    # type: (bool) -> Table
+    """
+    Erzeugt die Tabelle fuer die Ausgabe der einzelnen Episoden.
+    """
+    table = Table(expand=True, box=box.ROUNDED, border_style="bright_black")
+    table.add_column("Original", style="bright_yellow", header_style="white bold")
+    table.add_column("Neu", style="green", header_style="white bold")
+    table.add_column("Ziel", style="cyan", header_style="white bold")
+    table.add_column("Grösse", style="white", header_style="white bold", justify="right", max_width=8)
+
+    if show_time:
+        table.add_column("Dauer", style="white", header_style="white bold", justify="right", max_width=8)
+
+    return table
+
+
+def wait(layout, episodes_found):
+    # type: (Layout, List[BaseInfo]) -> None
+    """
+    Warten auf Tastatureingabe des Users.
+    """
+    keyboard.add_hotkey('m', lambda: move_files(layout, episodes_found))
+    keyboard.add_hotkey('r', lambda: move_files(layout, episodes_found, rename_only=True))
+    keyboard.wait('q')
+
+
+def time_convert(sec):
+    # type: (float) -> str
+    mins = sec // 60
+    sec  = sec % 60
+    return "%02d:%02d" % (int(mins), int(sec))
+
+
+def move_files(layout, episodes_found, rename_only=False):
+    # type: (Layout, List[BaseInfo], bool) -> None
+    """
+    Verschieben der Dateien nach Anzeige und Auswahl [m]
+    """
+
+    # Prograssbar neu erzeugen und anzeigen
     text_column = TextColumn(" [white]Fortschritt:[/]")
     bar_column = BarColumn(bar_width=None, style="white", complete_style="bright_green", finished_style="green")
     progress = Progress(text_column, bar_column, "[green]{task.percentage:>3.0f}%[/]", TimeElapsedColumn(), expand=True)
-    footer.update(Panel(progress, box=box.ROUNDED, style="cyan"))
 
-    body.update(Panel(table, box= box.ROUNDED, style="cyan"))
+    layout.get("footer").get("footer_left").update(Panel(progress, box=box.ROUNDED, style="cyan"))
+    layout.update(layout.get("footer"))
 
-    with Live(layout, auto_refresh=True):
+    # Tabelle fuer die Verschiebung neu erzeugen und anzeigen
+    table = create_table(show_time=True)
+    layout.get("body").update(Panel(table, box=box.ROUNDED, style="cyan"))
+    layout.update(layout.get("body"))
+
+    with Live(layout, auto_refresh=True, refresh_per_second=2):
+        sum_time = 0
+        sum_size = 0
+        count = 0
+
+        # Alle Episoden durchlaufen und verschieben
         for episode in progress.track(episodes_found):
-            process_file(tvdb_instance, episode, table)
+            count += 1
+            msg_text = Text("Moving file #%d (%s)..." % (count, episode.filesize), justify="center", style="white")
+            layout.get("footer").get("footer_right").update(Panel(msg_text, box=box.ROUNDED, style="cyan"))
+
+            # Zeitmessung starten
+            start_time = time()
+            # Renamer erzeugen
+            cnamer = Renamer(episode.fullpath)
+            # Neuen Dateinamen generieren
+            new_name = episode.generate_filename()
+            # Datei umbenennen
+            do_rename_file(cnamer, new_name)
+            # Datei verschieben
+            if not rename_only:
+                do_move_file(cnamer=cnamer, dest_filepath=get_move_destination(episode), get_path_preview=False)
+            # Zeitmessung stoppen
+            end_time = time()
+
+            # Dauer berechnen
+            elapsed = end_time - start_time
+            # Gesamtdauer erhoehen
+            sum_time += elapsed
+            # Gesamtgroesse erhoehen
+            sum_size += episode.filesize_in_bytes
+
+            # Zeile in Table ausgeben
+            table.add_row(episode.originalfilename, new_name, get_move_destination(episode),
+                          episode.filesize, time_convert(elapsed))
+
+        # Summenzeile ausgeben
+        col_text = Text("Gesamt:", justify="right", style="white")
+        sum_text_time = Text(time_convert(sum_time), justify="right", style="white")
+        sum_text_size = Text(sizeof_fmt(sum_size), justify="right", style="white")
+
+        table.add_row(None, None, None, None, None, end_section=True)
+        table.add_row(None, None, col_text, sum_text_size, sum_text_time)
+
+        # Anzeige Meldung
+        msg_text = Text("Press [q] to exit", justify="center", style="red")
+        layout.get("footer").get("footer_right").update(Panel(msg_text, box=box.ROUNDED, style="cyan"))
 
 
 def main():

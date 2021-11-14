@@ -1,8 +1,8 @@
 # `tvnamer` release procedure
 
-1. Ensure CHANGELOG is up to date
+1. Ensure CHANGELOG is up-to-date
 2. Ensure tests are passing (CI and run again locally)
-3. Verify settings in `setup.py` (e.g supported Python versions)
+3. Verify settings in `setup.py` (e.g. supported Python versions)
 4. Bump version in `tvnamer/__init__.py`
 5. Bump version/release date in CHANGELOG
 6. Push changes to git

@@ -207,3 +207,15 @@ def format_episode_numbers(episodenumbers):
         )
 
     return epno
+
+
+def sizeof_fmt(num):
+    # type: (int) -> str
+    """ Konvertiert eine Anzahl Bytes in den entsprechenden String.
+    """
+    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}"
+        num /= 1024.0
+
+    return f"{num:.1f}Yi"
