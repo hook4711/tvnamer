@@ -6,6 +6,7 @@
 import os
 
 import sys
+# noinspection PyUnresolvedReferences
 from time import sleep, time
 
 sys.path.append('../tvnamer')

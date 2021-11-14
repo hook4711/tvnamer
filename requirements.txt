@@ -4,3 +4,4 @@ coverage~=6.0.1
 pytest~=6.2.5
 keyboard~=0.13.5
 setuptools~=57.4.0
+tvdb_api~=3.1.0
