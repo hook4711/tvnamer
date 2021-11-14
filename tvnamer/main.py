@@ -552,7 +552,8 @@ def tvnamer(paths):
 
         # Summenzeile ausgeben
         table.add_row(None, None, None, None, end_section=True)
-        table.add_row(None, None, Text("Summe:", justify="right", style="bright_yellow"), sizeof_fmt(size))
+        table.add_row(None, None, Text("Summe:", justify="right", style="bright_yellow"),
+                      Text(sizeof_fmt(size), justify="right", style="bright_yellow"))
 
         # Meldung ausgeben
         msg_text = Text("[m]= move, [r]= rename only, [q]= quit", justify="center", style="bright_yellow")
@@ -696,9 +697,9 @@ def move_files(layout, episodes_found, rename_only=False):
                           episode.filesize, time_convert(elapsed))
 
         # Summenzeile ausgeben
-        col_text = Text("Gesamt:", justify="right", style="white")
-        sum_text_time = Text(time_convert(sum_time), justify="right", style="white")
-        sum_text_size = Text(sizeof_fmt(sum_size), justify="right", style="white")
+        col_text = Text("Gesamt:", justify="right", style="bright_yellow")
+        sum_text_time = Text(time_convert(sum_time), justify="right", style="bright_yellow")
+        sum_text_size = Text(sizeof_fmt(sum_size), justify="right", style="bright_yellow")
 
         table.add_row(None, None, None, None, None, end_section=True)
         table.add_row(None, None, col_text, sum_text_size, sum_text_time)
