@@ -584,7 +584,7 @@ def create_layout():
     grid = Table.grid(expand=True)
     grid.add_column(justify="center", ratio=1)
     grid.add_row(
-        "[b]TVNamer[/b] modified by R.Dion (c)2021", style="white"
+        "[b bright_yellow]TVNamer[/] [green]modified by[/] [cyan]R.Dion[/] (c)2021", style="white"
     )
 
     header_title = Layout(name="header_title", size=3)
@@ -680,9 +680,12 @@ def move_files(layout, episodes_found, rename_only=False):
             new_name = episode.generate_filename()
             # Datei umbenennen
             do_rename_file(cnamer, new_name)
+
             # Datei verschieben
             if not rename_only:
                 do_move_file(cnamer=cnamer, dest_filepath=get_move_destination(episode), get_path_preview=False)
+                do_delete_path(episode)
+
             # Zeitmessung stoppen
             end_time = time()
 
