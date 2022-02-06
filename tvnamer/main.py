@@ -131,16 +131,19 @@ def get_move_destination(episode):
             "originalfilename": episode.originalfilename,
         }
 
-        dest_dir_alt = Config["move_files_destination_alt"] % {
-            "seriesname": wrap_validfname(episode.seriesname),
-            "seasonnumber": episode.seasonnumber,
-            "episodenumbers": wrap_validfname(
-                format_episode_numbers(episode.episodenumbers)
-            ),
-            "originalfilename": episode.originalfilename,
-        }
+        if "move_files_destination_alt" in Config:
+            dest_dir_alt = Config["move_files_destination_alt"] % {
+                "seriesname": wrap_validfname(episode.seriesname),
+                "seasonnumber": episode.seasonnumber,
+                "episodenumbers": wrap_validfname(
+                    format_episode_numbers(episode.episodenumbers)
+                ),
+                "originalfilename": episode.originalfilename,
+            }
+        else:
+            dest_dir_alt = None
 
-        if os.path.exists(dest_dir_alt):
+        if dest_dir_alt and os.path.exists(dest_dir_alt):
             # msg_table.add_row(f"[{MSG_COLOR}]Destination directory does not exist:[/][{MSG_COLOR_PATH}]{dest_dir}[/]")
             # msg_table.add_row(f"[{MSG_COLOR}]Alternative directory exists and will be used:[/][{MSG_COLOR_PATH}]{dest_dir_alt}[/]")
             dest_dir = dest_dir_alt
